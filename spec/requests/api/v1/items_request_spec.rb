@@ -117,4 +117,170 @@ RSpec.describe "Items API", type: :request do
       expect(response).to have_http_status(:not_found)
     end
   end
+
+  describe 'GET /api/v1/items/:id/merchant' do
+    it "returns the merchant for an item" do
+      merchant = create(:merchant)
+      item = create(:item, merchant: merchant)
+
+      get "/api/v1/items/#{item.id}/merchant"
+
+      expect(response).to have_http_status :ok
+
+      merchant_response = JSON.parse(response.body, symbolize_names: true)
+      expect(merchant_response[:data][:id]).to eq("#{merchant.id}")
+    end
+
+    it "returns a 404 if the item is not found" do
+      get "/api/v1/items/999999999/merchant"
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  describe "GET /api/v1/items/find" do
+    it "returns the first item that matches the search criteria" do
+      item1 = create(:item, name: 'apple')
+      item2 = create(:item, name: 'pear')
+      item3 = create(:item, name: 'pearssss')
+
+      get "/api/v1/items/find?name=#{item2.name}"
+
+      expect(response).to have_http_status :ok
+
+      item_response = JSON.parse(response.body, symbolize_names: true)
+      expect(item_response[:data][:id]).to eq("#{item2.id}")
+    end
+
+    it "returns a 404 if no item matches the search criteria" do
+      get "/api/v1/items/find?name=apple"
+
+      expect(response).to have_http_status :not_found
+    end
+
+    it "finds an item by min_price" do
+      item1 = create(:item, unit_price: 1.99)
+      item2 = create(:item, unit_price: 2.99)
+
+      get "/api/v1/items/find?min_price=2.00"
+
+      expect(response).to have_http_status :ok
+
+      item_response = JSON.parse(response.body, symbolize_names: true)
+      expect(item_response[:data][:id]).to eq("#{item2.id}")
+    end
+
+    it "returns a 404 if no item matches the min_price" do
+      get "/api/v1/items/find?min_price=2.00"
+
+      expect(response).to have_http_status :not_found
+    end
+
+    it "finds an item by max_price" do
+      item1 = create(:item, unit_price: 1.99)
+      item2 = create(:item, unit_price: 2.99)
+
+      get "/api/v1/items/find?max_price=2.00"
+
+      expect(response).to have_http_status :ok
+
+      item_response = JSON.parse(response.body, symbolize_names: true)
+      expect(item_response[:data][:id]).to eq("#{item1.id}")
+    end
+
+    it "returns a 404 if no item matches the max_price" do
+      get "/api/v1/items/find?max_price=2.00"
+
+      expect(response).to have_http_status :not_found
+    end
+  end
+
+  describe "GET /api/v1/items/find_all" do
+    it "returns all items that match the search criteria" do
+      item1 = create(:item, name: 'apple')
+      item2 = create(:item, name: 'pear')
+      item3 = create(:item, name: 'pearssss')
+
+      get "/api/v1/items/find_all?name=#{item2.name}"
+
+      expect(response).to have_http_status :ok
+
+      items_response = JSON.parse(response.body, symbolize_names: true)
+      expect(items_response[:data].length).to eq 2
+    end
+
+    it "returns a 404 if no item matches the search criteria" do
+      get "/api/v1/items/find_all?name=apple"
+
+      expect(response).to have_http_status :not_found
+    end
+
+    it "finds all items by min_price" do
+      item1 = create(:item, unit_price: 1)
+      item2 = create(:item, unit_price: 3)
+      item3 = create(:item, unit_price: 4)
+
+      get "/api/v1/items/find_all?min_price=2.00"
+
+      expect(response).to have_http_status :ok
+
+      items_response = JSON.parse(response.body, symbolize_names: true)
+      expect(items_response[:data].length).to eq 2
+      returned_ids = items_response[:data].map { |item| item[:id] }
+      expect(returned_ids).to include("#{item2.id}", "#{item3.id}")
+    end
+
+    it "returns a 404 if no item matches the min_price" do
+      get "/api/v1/items/find_all?min_price=2.00"
+
+      expect(response).to have_http_status :not_found
+    end
+
+    it "finds all items by max_price" do
+      item1 = create(:item, unit_price: 1)
+      item2 = create(:item, unit_price: 3)
+      item3 = create(:item, unit_price: 4)
+
+      get "/api/v1/items/find_all?max_price=2.00"
+
+      expect(response).to have_http_status :ok
+
+      items_response = JSON.parse(response.body, symbolize_names: true)
+      expect(items_response[:data].length).to eq 1
+      expect(items_response[:data].first[:id]).to eq("#{item1.id}")
+    end
+
+    it "returns a 404 if no item matches the max_price" do
+      get "/api/v1/items/find_all?max_price=2.00"
+
+      expect(response).to have_http_status :not_found
+    end
+
+    it "finds all items by min_price and max_price" do
+      item1 = create(:item, unit_price: 1)
+      item2 = create(:item, unit_price: 3)
+      item3 = create(:item, unit_price: 4)
+
+      get "/api/v1/items/find_all?min_price=2.00&max_price=4.00"
+
+      expect(response).to have_http_status :ok
+
+      items_response = JSON.parse(response.body, symbolize_names: true)
+      expect(items_response[:data].length).to eq 2
+      returned_ids = items_response[:data].map { |item| item[:id] }
+      expect(returned_ids).to include("#{item2.id}", "#{item3.id}")
+    end
+
+    it "returns a 400 if min_price is greater than max_price" do
+      get "/api/v1/items/find_all?min_price=4.00&max_price=2.00"
+
+      expect(response).to have_http_status :bad_request
+    end
+
+    it "returns a 404 if no item matches the min_price and max_price" do
+      get "/api/v1/items/find_all?min_price=2.00&max_price=4.00"
+
+      expect(response).to have_http_status :not_found
+    end
+  end
 end

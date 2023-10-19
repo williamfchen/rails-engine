@@ -24,24 +24,4 @@ describe "Merchant Items API" do
       expect(response.body).to include('Merchant not found')
     end
   end
-
-  describe 'GET /api/v1/items/:id/merchant' do
-    it "returns the merchant for an item" do
-      merchant = create(:merchant)
-      item = create(:item, merchant: merchant)
-
-      get "/api/v1/items/#{item.id}/merchant"
-
-      expect(response).to have_http_status :ok
-
-      merchant_response = JSON.parse(response.body, symbolize_names: true)
-      expect(merchant_response[:data][:id]).to eq("#{merchant.id}")
-    end
-
-    it "returns a 404 if the item is not found" do
-      get "/api/v1/items/999999999/merchant"
-
-      expect(response).to have_http_status(:not_found)
-    end
-  end
 end
